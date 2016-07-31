@@ -36,7 +36,7 @@ func main() {
 }
 
 func rankings(c *gin.Context) {
-	db, err := sql.Open("postgres", "user=postgres dbname=postgres")
+	db, err := sql.Open("postgres", os.Getenv("DATABASE_URL"))
 	if err != nil {
 		log.Printf("Error querying db for results %v\n", err)
 		c.Abort()
