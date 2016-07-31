@@ -1,4 +1,4 @@
-package lib
+package elo
 
 import (
 	"testing"
@@ -20,7 +20,7 @@ func TestElo(t *testing.T) {
 
 func (s *EloTestSuite) TestExampleMatch_OnePlayerGainsRating_OtherLoses() {
 
-	player1Rank, player2Rank := Win(2400, 2000)
+	player1Rank, player2Rank := updateRanking(2400, 2000)
 
 	require.Condition(s.T(), equalWithTolerance(2403, player1Rank, 0.1), "Player 1 rank not correct was %v, expected %v", player1Rank, 2403)
 	require.Condition(s.T(), equalWithTolerance(1997, player2Rank, 0.1), "Player 2 rank not correct was %v, expected %v", player2Rank, 1997)

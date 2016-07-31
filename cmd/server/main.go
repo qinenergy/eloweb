@@ -1,40 +1,23 @@
 package main
 
 import (
-	"bytes"
 	"log"
 	"net/http"
 	"os"
-	"strconv"
 
+	"errors"
+	"github.com/RaganH/eloweb/lib/elo"
 	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq"
 )
 
-type Doc struct {
-	title string
-}
-
-func repeatFunc(c *gin.Context, repeat int) {
-	var buffer bytes.Buffer
-	for i := 0; i < repeat; i++ {
-		buffer.WriteString("Hello from Go!")
-	}
-	c.String(http.StatusOK, buffer.String())
-}
+var allResults []*elo.Result
 
 func main() {
 
 	port := os.Getenv("PORT")
 	if port == "" {
 		log.Fatal("$PORT must be set")
-	}
-
-	tStr := os.Getenv("REPEAT")
-	repeat, err := strconv.Atoi(tStr)
-	if err != nil {
-		log.Print("Error converting $REPEAT to an int: %q - Using default", err)
-		repeat = 5
 	}
 
 	router := gin.Default()
@@ -47,7 +30,28 @@ func main() {
 		})
 	})
 
-	router.GET("/repeat", func(c *gin.Context) { repeatFunc(c, repeat) })
+	router.GET("/result", func(c *gin.Context) { addScore(c) })
+	router.GET("/rankings", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "rankings.tmpl.html", elo.CalculateRankings(allResults))
+	})
 
 	router.Run(":" + port)
+}
+
+func addScore(c *gin.Context) {
+	winner := c.Query("winner")
+	loser := c.Query("loser")
+
+	if winner == "" || loser == "" {
+		c.AbortWithError(http.StatusBadRequest, errors.New("Both usernames not provided"))
+		return
+	}
+
+	allResults = append(allResults, &elo.Result{
+		Winner: winner,
+		Loser:  loser,
+	})
+
+	c.Redirect(http.StatusTemporaryRedirect, "/rankings")
+
 }

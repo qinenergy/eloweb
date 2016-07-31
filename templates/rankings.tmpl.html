@@ -1,0 +1,7 @@
+<html>
+<h1>
+    {{ range $key, $user := . }}
+        {{ $user.Id }} : {{ $user.Score}}
+    {{ end }}
+</h1>
+</html>
