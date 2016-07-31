@@ -5,16 +5,15 @@ import (
 	"net/http"
 	"os"
 
+	"database/sql"
 	"errors"
+	"fmt"
 	"github.com/RaganH/eloweb/lib/elo"
 	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq"
 )
 
-var allResults []*elo.Result
-
 func main() {
-
 	port := os.Getenv("PORT")
 	if port == "" {
 		log.Fatal("$PORT must be set")
@@ -30,12 +29,38 @@ func main() {
 		})
 	})
 
-	router.GET("/result", func(c *gin.Context) { addScore(c) })
-	router.GET("/rankings", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "rankings.tmpl.html", elo.CalculateRankings(allResults))
-	})
+	router.GET("/result", addScore)
+	router.GET("/rankings", rankings)
 
 	router.Run(":" + port)
+}
+
+func rankings(c *gin.Context) {
+	db, err := sql.Open("postgres", "user=postgres dbname=postgres")
+	if err != nil {
+		log.Printf("Error querying db for results %v\n", err)
+		c.Abort()
+	}
+
+	rows, err := db.Query("SELECT * FROM Results")
+	if err != nil {
+		log.Printf("Error querying db for results %v\n", err)
+		c.Abort()
+	}
+	defer db.Close()
+	var results []*elo.Result
+	for rows.Next() {
+		r := &elo.Result{}
+		err = rows.Scan(&r.Winner, &r.Loser)
+		if err != nil {
+			log.Println("Error scanning results rows: %v\n", err)
+			c.Abort()
+		}
+		results = append(results, r)
+	}
+
+	fmt.Println(err)
+	c.HTML(http.StatusOK, "rankings.tmpl.html", elo.CalculateRankings(results))
 }
 
 func addScore(c *gin.Context) {
@@ -47,11 +72,18 @@ func addScore(c *gin.Context) {
 		return
 	}
 
-	allResults = append(allResults, &elo.Result{
-		Winner: winner,
-		Loser:  loser,
-	})
+	db, err := sql.Open("postgres", "user=postgres dbname=postgres")
+	if err != nil {
+		log.Printf("Error querying db for results %v\n", err)
+		c.Abort()
+	}
+	defer db.Close()
+
+	_, err = db.Query("INSERT INTO Results VALUES ($1,$2)", winner, loser)
+	if err != nil {
+		log.Printf("Error querying db for results %v\n", err)
+		c.Abort()
+	}
 
 	c.Redirect(http.StatusTemporaryRedirect, "/rankings")
-
 }
