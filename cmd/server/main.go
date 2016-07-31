@@ -8,15 +8,14 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/russross/blackfriday"
 	_ "github.com/lib/pq"
 )
 
-var (
-	repeat int
-)
+type Doc struct {
+	title string
+}
 
-func repeatFunc(c *gin.Context) {
+func repeatFunc(c *gin.Context, repeat int) {
 	var buffer bytes.Buffer
 	for i := 0; i < repeat; i++ {
 		buffer.WriteString("Hello from Go!")
@@ -25,34 +24,30 @@ func repeatFunc(c *gin.Context) {
 }
 
 func main() {
-	var err error
-	port := os.Getenv("PORT")
 
+	port := os.Getenv("PORT")
 	if port == "" {
 		log.Fatal("$PORT must be set")
 	}
 
 	tStr := os.Getenv("REPEAT")
-	repeat, err = strconv.Atoi(tStr)
+	repeat, err := strconv.Atoi(tStr)
 	if err != nil {
 		log.Print("Error converting $REPEAT to an int: %q - Using default", err)
 		repeat = 5
 	}
 
-	router := gin.New()
-	router.Use(gin.Logger())
+	router := gin.Default()
 	router.LoadHTMLGlob("templates/*.tmpl.html")
 	router.Static("/static", "static")
 
 	router.GET("/", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "index.tmpl.html", nil)
+		c.HTML(http.StatusOK, "index.tmpl.html", gin.H{
+			"title": "Main website",
+		})
 	})
 
-	router.GET("/mark", func(c *gin.Context) {
-		c.String(http.StatusOK, string(blackfriday.MarkdownBasic([]byte("**hi!**"))))
-	})
-
-	router.GET("/repeat", repeatFunc)
+	router.GET("/repeat", func(c *gin.Context) { repeatFunc(c, repeat) })
 
 	router.Run(":" + port)
 }
